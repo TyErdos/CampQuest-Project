@@ -6,13 +6,21 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 const ExpressError = require('./utilities/ExpressError');
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const User = require('./models/user');
 
 
 
 
 
-const campgrounds = require('./Routes/campgrounds');
-const reviews = require('./Routes/reviews');
+
+const campgroundRoutes = require('./Routes/campgrounds');
+const reviewRoutes = require('./Routes/reviews');
+const userRoutes = require('./Routes/users');
+const user = require('./models/user');
+
+
 
 
 mongoose.set('strictQuery', true);
@@ -55,19 +63,32 @@ const sessionConfig = {
     }
 
 }
-app.use(session(sessionConfig));
+app.use(session(sessionConfig)); //app.use session should be before app.use passport.session
 app.use(flash());
+
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate())); //use the localStrategy, and the authenticate on User
+
+passport.serializeUser(User.serializeUser()); //tells passport how to serialize a user(how to store a user in the session)
+passport.deserializeUser(User.deserializeUser());  //how to get a user out of that session
 
 app.use((req, res, next) =>
 {
+    if(!['/login', '/register', '/'].includes(req.originalUrl))
+    {
+        req.session.returnTo = req.originalUrl;
+    }
+    res.locals.currentUser = req.user;
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
     next();
 })
 
 
-app.use('/campgrounds', campgrounds);
-app.use('/campgrounds/:id/reviews', reviews)
+app.use('/campgrounds', campgroundRoutes);
+app.use('/campgrounds/:id/reviews', reviewRoutes);
+app.use('/', userRoutes);
 
 
 
