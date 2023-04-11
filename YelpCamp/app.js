@@ -11,7 +11,6 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate');
-const session = require('express-session');
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 const ExpressError = require('./utilities/ExpressError');
@@ -20,9 +19,8 @@ const LocalStrategy = require('passport-local');
 const User = require('./models/user');
 const mongoSantize = require('express-mongo-sanitize');
 const helmet = require('helmet');
-
-
-
+const session = require('express-session');
+const MongoDBStore = require("connect-mongo");
 
 
 
@@ -30,12 +28,14 @@ const campgroundRoutes = require('./Routes/campgrounds');
 const reviewRoutes = require('./Routes/reviews');
 const userRoutes = require('./Routes/users');
 const user = require('./models/user');
+const MongoStore = require('connect-mongo');
 
 
 
-
+// const dbUrl = process.env.DB_URL;
+const dbUrl = 'mongodb://127.0.0.1:27017/yelp-camp'
 mongoose.set('strictQuery', true);
-mongoose.connect('mongodb://127.0.0.1:27017/yelp-camp', 
+mongoose.connect(dbUrl, 
 {
     useNewUrlParser: true,
     // useCreateIndex: true,                      NOT REQUIRED IN NEWER VERSION OF MONGOOSE
@@ -64,9 +64,21 @@ app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'Public')));
 app.use(mongoSantize());
 
+const store = MongoDBStore.create({
+    mongoUrl: dbUrl,
+    secret: 'zdvhdv9J!CcUFSb*',
+    touchAfter: 24 * 60 * 60
+});
+
+store.on("error", function(e){
+    console.log("Session Store Error", e)
+})
 
 const sessionConfig = {
-    secret: "thisshouldbeabettersecret!",
+
+    store,
+    name: 'session',
+    secret: "zdvhdv9J!CcUFSb*",
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -78,6 +90,8 @@ const sessionConfig = {
     }
 
 }
+
+
 app.use(session(sessionConfig)); //app.use session should be before app.use passport.session
 app.use(flash());
 
